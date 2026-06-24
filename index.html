@@ -178,7 +178,7 @@
         const animar = () => {
           if (!autoRotateAtivo) return;
           const rotacao = getRotacaoAtual();
-          aplicarRotacao(rotacao.x, rotacao.y + 5, rotacao.z);
+          aplicarRotacao(rotacao.x, rotacao.y + 2.5, rotacao.z);
           frameAutoRotate = requestAnimationFrame(animar);
         };
 
@@ -194,19 +194,25 @@
         }
       }
 
+      function girarUmaVez(eixo) {
+        const rotacao = getRotacaoAtual();
+
+        if (eixo === 'x') {
+          aplicarRotacao(rotacao.x + 5, rotacao.y, rotacao.z);
+        } else if (eixo === 'y') {
+          aplicarRotacao(rotacao.x, rotacao.y + 5, rotacao.z);
+        } else if (eixo === 'z') {
+          aplicarRotacao(rotacao.x, rotacao.y, rotacao.z + 5);
+        }
+      }
+
       function iniciarRotacaoPorEixo(eixo) {
-        if (intervaloEixo) clearInterval(intervaloEixo);
+        pararRotacaoPorEixo();
         eixoAtivo = eixo;
+        girarUmaVez(eixo);
 
         intervaloEixo = setInterval(() => {
-          const rotacao = getRotacaoAtual();
-          if (eixo === 'x') {
-            aplicarRotacao(rotacao.x + 5, rotacao.y, rotacao.z);
-          } else if (eixo === 'y') {
-            aplicarRotacao(rotacao.x, rotacao.y + 5, rotacao.z);
-          } else {
-            aplicarRotacao(rotacao.x, rotacao.y, rotacao.z + 5);
-          }
+          girarUmaVez(eixo);
         }, 40);
       }
 
