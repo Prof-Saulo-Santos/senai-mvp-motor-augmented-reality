@@ -3,22 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MVP Realidade Aumentada — SENAI Porto Ferreira</title>
+    <title>Motor Elétrico em RA — SENAI</title>
 
-    <!-- ====================================================
-         BIBLIOTECAS (carregadas via CDN — sem instalação)
-         A-Frame  : motor de cenas 3D para a web
-         AR.js    : realidade aumentada via câmera (marcadores)
-         ==================================================== -->
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
     <style>
-      /* Remove margens e barras de rolagem para experiência fullscreen */
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { overflow: hidden; background: #000; font-family: 'Arial', sans-serif; }
+      body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
 
-      /* Painel de instruções sobreposto à câmera */
       #painel {
         position: fixed;
         bottom: 20px;
@@ -35,9 +28,7 @@
         border: 1px solid rgba(255,255,255,0.2);
         backdrop-filter: blur(6px);
       }
-      #painel strong { color: #f0c040; }
 
-      /* Badge superior com nome do projeto */
       #badge {
         position: fixed;
         top: 16px;
@@ -55,24 +46,14 @@
       }
     </style>
   </head>
-
   <body>
+    <div id="badge">⚙️ Motor Elétrico — MVP de RA</div>
 
-    <!-- Badge superior -->
-    <div id="badge">🎓 SENAI Porto Ferreira — MVP de RA</div>
-
-    <!-- Instruções para o usuário -->
     <div id="painel">
       📷 Aponte a câmera para o <strong>marcador HIRO</strong><br>
-      O objeto 3D aparecerá sobre ele automaticamente
+      O modelo 3D do motor aparecerá sobre ele.
     </div>
 
-    <!-- =====================================================
-         CENA DE REALIDADE AUMENTADA
-         arjs         : ativa o modo de câmera + rastreamento
-         vr-mode-ui   : desativa botão de VR (desnecessário)
-         renderer     : melhora profundidade dos objetos 3D
-         ===================================================== -->
     <a-scene
       embedded
       arjs="sourceType: webcam;
@@ -86,90 +67,41 @@
       vr-mode-ui="enabled: false"
       loading-screen="enabled: false">
 
-      <!-- =================================================
-           MARCADOR: usa o padrão "hiro" (pré-definido no AR.js)
-           Imprima o marcador Hiro — link no passo_a_passo.md
-           ================================================= -->
       <a-marker preset="hiro">
-
-        <!-- CUBO principal — rotaciona continuamente -->
-        <!-- Y = 0.5 → metade da altura do cubo acima do marcador -->
-        <a-box
+        <a-entity
+          gltf-model="url(./electric_motor.glb)"
           position="0 0.5 0"
-          width="1" height="1" depth="1"
-          color="#C8102E"
-          opacity="0.92"
-          animation="property: rotation;
-                     from: 0 0 0;
-                     to: 0 360 0;
-                     loop: true;
-                     dur: 4000;
-                     easing: linear">
-        </a-box>
+          rotation="0 0 0"
+          scale="0.25 0.25 0.25"
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear">
+        </a-entity>
 
-        <!-- ESFERA sobre o cubo: sobe e desce -->
-        <!-- Y = 1.2 → fica logo acima do topo do cubo (cubo termina em Y=1.0) -->
-        <a-sphere
-          position="0 1.2 0"
-          radius="0.15"
-          color="#F0C040"
-          animation__pos="property: position;
-                          from: 0 1.2 0;
-                          to: 0 1.3 0;
-                          loop: true;
-                          direction: alternate;
-                          dur: 1200;
-                          easing: easeInOutSine"
-          animation__color="property: color;
-                            from: #F0C040;
-                            to: #FF6B00;
-                            loop: true;
-                            direction: alternate;
-                            dur: 1200;">
-        </a-sphere>
-
-        <!-- TEXTO flutuante: Y = 1.9 → acima da esfera -->
-        <a-text
-          value="SENAI\nPorto Ferreira\nMVP de RA"
-          align="center"
-          position="0 1.9 0"
-          rotation="-10 0 0"
-          color="#FFFFFF"
-          width="4"
-          font="monoid">
-        </a-text>
-
-        <!-- PLANO base (sombra visual sob o cubo) -->
         <a-plane
           position="0 0 0"
           rotation="-90 0 0"
-          width="1.1" height="1.1"
-          color="#1a1a2e"
-          opacity="0.5">
+          width="1.2"
+          height="1.2"
+          color="#111827"
+          opacity="0.45">
         </a-plane>
-
       </a-marker>
 
-      <!-- Câmera padrão do AR.js -->
       <a-entity camera></a-entity>
-
     </a-scene>
 
     <script>
-      // Feedback visual: muda o painel quando o marcador é detectado
       const marker = document.querySelector('a-marker');
       const painel = document.getElementById('painel');
 
       marker.addEventListener('markerFound', () => {
         painel.style.background = 'rgba(0, 140, 0, 0.75)';
-        painel.innerHTML = '✅ Marcador detectado! Objeto 3D ativo.';
+        painel.innerHTML = '✅ Marcador detectado! Modelo 3D ativo.';
       });
 
       marker.addEventListener('markerLost', () => {
         painel.style.background = 'rgba(0,0,0,0.65)';
-        painel.innerHTML = '📷 Aponte a câmera para o <strong>marcador HIRO</strong><br>O objeto 3D aparecerá sobre ele automaticamente';
+        painel.innerHTML = '📷 Aponte a câmera para o <strong>marcador HIRO</strong><br>O modelo 3D do motor aparecerá sobre ele.';
       });
     </script>
-
   </body>
 </html>
