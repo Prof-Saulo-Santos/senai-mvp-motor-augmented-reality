@@ -55,21 +55,28 @@
         z-index: 999;
       }
 
-      .botao-zoom {
+      .botao-zoom, .botao-acao {
         border: none;
-        border-radius: 50%;
-        width: 46px;
-        height: 46px;
-        font-size: 22px;
+        border-radius: 999px;
+        min-width: 46px;
+        min-height: 46px;
+        font-size: 16px;
         font-weight: bold;
         cursor: pointer;
         background: rgba(255,255,255,0.95);
         color: #111;
         box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        padding: 0 12px;
+        touch-action: manipulation;
       }
 
-      .botao-zoom:hover {
+      .botao-zoom:hover, .botao-acao:hover {
         transform: scale(1.05);
+      }
+
+      .botao-acao.ativo {
+        background: #f0c040;
+        color: #111;
       }
     </style>
   </head>
@@ -84,6 +91,10 @@
     <div id="controles">
       <button class="botao-zoom" id="zoom-in" aria-label="Zoom In">+</button>
       <button class="botao-zoom" id="zoom-out" aria-label="Zoom Out">−</button>
+      <button class="botao-acao" id="rotacao-continua" aria-label="Rotação contínua">Auto</button>
+      <button class="botao-acao" id="girar-x" aria-label="Rotacionar no eixo X">X</button>
+      <button class="botao-acao" id="girar-y" aria-label="Rotacionar no eixo Y">Y</button>
+      <button class="botao-acao" id="girar-z" aria-label="Rotacionar no eixo Z">Z</button>
     </div>
 
     <a-scene
@@ -105,8 +116,7 @@
           gltf-model="url(./electric_motor.glb)"
           position="0 0.5 0"
           rotation="0 0 0"
-          scale="0.8 0.8 0.8"
-          animation="property: rotation; to: 0 360 0; loop: true; dur: 8000; easing: linear">
+          scale="0.8 0.8 0.8">
         </a-entity>
 
         <a-plane
@@ -128,16 +138,100 @@
       const modelo = document.getElementById('motor-modelo');
       const botaoZoomIn = document.getElementById('zoom-in');
       const botaoZoomOut = document.getElementById('zoom-out');
+      const botaoRotacaoContinua = document.getElementById('rotacao-continua');
+      const botaoGirarX = document.getElementById('girar-x');
+      const botaoGirarY = document.getElementById('girar-y');
+      const botaoGirarZ = document.getElementById('girar-z');
 
       let escalaAtual = 0.8;
+      let autoRotateAtivo = false;
+      let frameAutoRotate = null;
+      let intervaloEixo = null;
+      let eixoAtivo = null;
+
+      function getRotacaoAtual() {
+        const rotacao = modelo.getAttribute('rotation');
+        return {
+          x: Number(rotacao.x || 0),
+          y: Number(rotacao.y || 0),
+          z: Number(rotacao.z || 0)
+        };
+      }
+
+      function aplicarRotacao(x, y, z) {
+        modelo.setAttribute('rotation', `${x} ${y} ${z}`);
+      }
 
       function aplicarZoom(novoValor) {
         escalaAtual = Math.max(0.3, Math.min(2.0, novoValor));
         modelo.setAttribute('scale', `${escalaAtual} ${escalaAtual} ${escalaAtual}`);
       }
 
+      function iniciarRotacaoAuto() {
+        if (autoRotateAtivo) return;
+        autoRotateAtivo = true;
+        botaoRotacaoContinua.classList.add('ativo');
+
+        const animar = () => {
+          if (!autoRotateAtivo) return;
+          const rotacao = getRotacaoAtual();
+          aplicarRotacao(rotacao.x, rotacao.y + 5, rotacao.z);
+          frameAutoRotate = requestAnimationFrame(animar);
+        };
+
+        frameAutoRotate = requestAnimationFrame(animar);
+      }
+
+      function pararRotacaoAuto() {
+        autoRotateAtivo = false;
+        botaoRotacaoContinua.classList.remove('ativo');
+        if (frameAutoRotate) {
+          cancelAnimationFrame(frameAutoRotate);
+          frameAutoRotate = null;
+        }
+      }
+
+      function iniciarRotacaoPorEixo(eixo) {
+        if (intervaloEixo) clearInterval(intervaloEixo);
+        eixoAtivo = eixo;
+
+        intervaloEixo = setInterval(() => {
+          const rotacao = getRotacaoAtual();
+          if (eixo === 'x') {
+            aplicarRotacao(rotacao.x + 5, rotacao.y, rotacao.z);
+          } else if (eixo === 'y') {
+            aplicarRotacao(rotacao.x, rotacao.y + 5, rotacao.z);
+          } else {
+            aplicarRotacao(rotacao.x, rotacao.y, rotacao.z + 5);
+          }
+        }, 40);
+      }
+
+      function pararRotacaoPorEixo() {
+        if (intervaloEixo) {
+          clearInterval(intervaloEixo);
+          intervaloEixo = null;
+        }
+        eixoAtivo = null;
+      }
+
       botaoZoomIn.addEventListener('click', () => aplicarZoom(escalaAtual + 0.1));
       botaoZoomOut.addEventListener('click', () => aplicarZoom(escalaAtual - 0.1));
+      botaoRotacaoContinua.addEventListener('click', () => {
+        if (autoRotateAtivo) {
+          pararRotacaoAuto();
+        } else {
+          iniciarRotacaoAuto();
+        }
+      });
+
+      ['x', 'y', 'z'].forEach((eixo) => {
+        const botao = document.getElementById(`girar-${eixo}`);
+        botao.addEventListener('pointerdown', () => iniciarRotacaoPorEixo(eixo));
+        botao.addEventListener('pointerup', pararRotacaoPorEixo);
+        botao.addEventListener('pointerleave', pararRotacaoPorEixo);
+        botao.addEventListener('pointercancel', pararRotacaoPorEixo);
+      });
 
       marker.addEventListener('markerFound', () => {
         painel.style.background = 'rgba(0, 140, 0, 0.75)';
