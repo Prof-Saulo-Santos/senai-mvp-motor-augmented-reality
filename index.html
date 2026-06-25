@@ -7,6 +7,8 @@
 
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+  <!-- Biblioteca necessária para o animation-mixer funcionar: -->
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -76,7 +78,7 @@
         position="0 0 0"
         rotation="-90 0 0"
         scale="0.03 0.03 0.03"
-        animation-mixer="clip: ArmatureAction; loop: once; clampWhenFinished: true;">
+        animation-mixer="clip: *; loop: once; clampWhenFinished: true;">
       </a-gltf-model>
 
 
@@ -122,7 +124,7 @@
     // -----------------------------------------------------------------
     motorEl.addEventListener('model-loaded', function () {
       modeloCarregado = true;
-      status.textContent = '✅ Motor carregado! Use os botões abaixo.';
+      //status.textContent = '✅ Motor carregado! Use os botões abaixo.';
       status.style.background = 'rgba(0,100,0,0.7)';
 
       const obj3D = this.getObject3D('mesh');
@@ -216,8 +218,8 @@
 
       motorEl.setAttribute('animation-mixer',
         animacaoAtiva
-          ? 'clip: ArmatureAction; loop: repeat; timeScale: 1;'
-          : 'clip: ArmatureAction; loop: once; timeScale: 0;'
+          ? 'clip: *; loop: repeat; timeScale: 1;'
+          : 'clip: *; loop: once; timeScale: 0;'
       );
 
       btnAnim.textContent = animacaoAtiva ? '⏸ PARAR' : '▶ ANIMAÇÃO';
@@ -234,6 +236,48 @@
     document.getElementById('marcador').addEventListener('markerLost', () => {
       status.textContent = '📷 Aponte para o marcador HIRO';
       status.style.background = 'rgba(0,0,0,0.65)';
+    });
+
+    // -----------------------------------------------------------------
+    // Lógica de Zoom via Pinch (Gestos de Pinça)
+    // -----------------------------------------------------------------
+    let escalaAtual = 0.03; // Escala inicial definida no HTML
+    let distanciaInicialPinca = null;
+    let escalaInicialPinca = null;
+
+    function aplicarZoom(novoValor) {
+      // Limita a escala entre 0.01 (min) e 0.15 (max)
+      escalaAtual = Math.max(0.01, Math.min(0.15, novoValor));
+      motorEl.setAttribute('scale', `${escalaAtual} ${escalaAtual} ${escalaAtual}`);
+    }
+
+    function getDistancia(toque1, toque2) {
+      const dx = toque1.clientX - toque2.clientX;
+      const dy = toque1.clientY - toque2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        distanciaInicialPinca = getDistancia(e.touches[0], e.touches[1]);
+        escalaInicialPinca = escalaAtual;
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && distanciaInicialPinca !== null) {
+        const novaDistancia = getDistancia(e.touches[0], e.touches[1]);
+        const proporcao = novaDistancia / distanciaInicialPinca;
+        const novoZoom = escalaInicialPinca * proporcao;
+        aplicarZoom(novoZoom);
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        distanciaInicialPinca = null;
+        escalaInicialPinca = null;
+      }
     });
   </script>
 
