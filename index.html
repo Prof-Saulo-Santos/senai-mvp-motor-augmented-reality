@@ -1,285 +1,302 @@
+<!-- 
+Prof. Saulo Santos
+Data: 25.06.2026
+Feature: zoom-in e zoom-out com os dedos
+local: saulo/senai/gamificacao/realidade_aumentada/motor_03
+-->
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Visor Motor — RA SENAI Porto Ferreira</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Motor Elétrico em RA — SENAI</title>
 
-  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  <!-- Biblioteca necessária para o animation-mixer funcionar: -->
-  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { overflow: hidden; background: #000; font-family: Arial, sans-serif; }
 
-    #badge {
-      position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.75); color: #fff;
-      padding: 7px 18px; border-radius: 20px;
-      font-size: 12px; font-weight: bold; z-index: 999; letter-spacing: 1px;
-    }
-
-    #controles {
-      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 10px; z-index: 999;
-    }
-
-    .btn {
-      padding: 12px 22px; font-size: 14px; font-weight: bold;
-      border: none; border-radius: 25px; cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5); letter-spacing: 0.5px;
-    }
-    #btn-explodir { background: #C8102E; color: #fff; }
-    #btn-explodir.explodido { background: #007A33; }
-    #btn-animar  { background: #2255AA; color: #fff; }
-
-    #status {
-      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.65); color: #fff;
-      padding: 8px 18px; border-radius: 10px;
-      font-size: 12px; z-index: 999; text-align: center;
-    }
-  </style>
-</head>
-<body>
-
-  <div id="badge">🔧 Motor 3D Real — SENAI Porto Ferreira</div>
-  <div id="status">📷 Aponte para o marcador HIRO</div>
-
-  <div id="controles">
-    <button class="btn" id="btn-explodir">💥 EXPLODIR</button>
-    <button class="btn" id="btn-animar">▶ ANIMAÇÃO</button>
-  </div>
-
-  <!-- ===== CENA AR ===== -->
-  <a-scene
-    embedded
-    arjs="sourceType: webcam;
-          debugUIEnabled: false;
-          detectionMode: mono;
-          smooth: true;
-          smoothCount: 5;
-          smoothTolerance: 0.01;
-          smoothThreshold: 2;"
-    renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; precision: medium;"
-    vr-mode-ui="enabled: false"
-    loading-screen="enabled: false">
-
-    <a-marker preset="hiro" id="marcador">
-
-      <!-- Modelo real do motor carregado do .glb -->
-      <!-- scale: ajuste conforme o tamanho do seu modelo -->
-      <!-- rotation: -90 0 0 corrige o eixo Z→Y do Blender/Sketchfab -->
-      <a-gltf-model
-        id="motor"
-        src="motor_alterado.glb"
-        position="0 0 0"
-        rotation="-90 0 0"
-        scale="0.03 0.03 0.03"
-        animation-mixer="clip: *; loop: once; clampWhenFinished: true;">
-      </a-gltf-model>
-
-
-    </a-marker>
-
-    <a-entity camera></a-entity>
-  </a-scene>
-
-  <!-- ===== LÓGICA: EXPLOSÃO VIA BONES (Three.js) ===== -->
-  <script>
-    // -----------------------------------------------------------------
-    // Posições dos ossos no estado MONTADO (valores originais do .gltf)
-    // BB_3=Y:-9.5 | Main_2=Y:10 | TB_1=Y:32.5 | Cap_0=Y:30.9
-    // -----------------------------------------------------------------
-    const POSICOES = {
-      montado: {
-        'Cap_0':  { x: 0, y: 30.9, z: 0 },
-        'TB_1':   { x: 0, y: 32.5, z: 0 },
-        'Main_2': { x: 0, y: 10.0, z: 0 },
-        'BB_3':   { x: 0, y: -9.5, z: 0 },
-      },
-      explodido: {
-        'Cap_0':  { x: 0,  y: 90.0, z: 0  },   // tampa sobe
-        'TB_1':   { x: 0,  y: 70.0, z: 0  },   // bloco top sobe
-        'Main_2': { x: 0,  y: 10.0, z: 0  },   // corpo fica
-        'BB_3':   { x: 0,  y:-50.0, z: 0  },   // bloco base desce
+      #painel {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.65);
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-size: 14px;
+        text-align: center;
+        z-index: 999;
+        max-width: 90vw;
+        border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(6px);
       }
-    };
 
-    // Referências
-    const motorEl  = document.getElementById('motor');
-    const btnExp   = document.getElementById('btn-explodir');
-    const btnAnim  = document.getElementById('btn-animar');
-    const status   = document.getElementById('status');
+      #badge {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.7);
+        color: #fff;
+        padding: 8px 18px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        z-index: 999;
+        border: 1px solid rgba(255,255,255,0.25);
+      }
 
-    let estaExplodido = false;
-    let animandoBones = false;
-    let bonesMap = {};        // nome → objeto Three.js Bone
-    let modeloCarregado = false;
+      #controles {
+        position: fixed;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        z-index: 999;
+        max-width: calc(100vw - 24px);
+      }
 
-    // -----------------------------------------------------------------
-    // Ao carregar o modelo: mapeia os ossos pelo nome
-    // -----------------------------------------------------------------
-    motorEl.addEventListener('model-loaded', function () {
-      modeloCarregado = true;
-      //status.textContent = '✅ Motor carregado! Use os botões abaixo.';
-      status.style.background = 'rgba(0,100,0,0.7)';
+      .botao-zoom, .botao-acao {
+        border: none;
+        border-radius: 999px;
+        min-width: 46px;
+        min-height: 46px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        background: rgba(255,255,255,0.95);
+        color: #111;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        padding: 0 12px;
+        touch-action: manipulation;
+      }
 
-      const obj3D = this.getObject3D('mesh');
+      .botao-zoom:hover, .botao-acao:hover {
+        transform: scale(1.05);
+      }
 
-      obj3D.traverse(function(child) {
-        // Captura todos os ossos (Bone) pelo nome
-        if (child.isBone) {
-          bonesMap[child.name] = child;
-          console.log('🦴 Bone encontrado:', child.name, child.position);
+      .botao-acao.ativo {
+        background: #f0c040;
+        color: #111;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="badge">⚙️ Motor Elétrico — MVP de RA</div>
+
+    <div id="painel">
+      📷 Aponte a câmera para o <strong>marcador HIRO</strong><br>
+      O modelo 3D do motor aparecerá sobre ele.
+    </div>
+
+    <div id="controles">
+      <button class="botao-zoom" id="zoom-in" aria-label="Zoom In">+</button>
+      <button class="botao-zoom" id="zoom-out" aria-label="Zoom Out">−</button>
+      <button class="botao-acao" id="rotacao-continua" aria-label="Rotação contínua">Auto</button>
+      <button class="botao-acao" id="girar-x" aria-label="Rotacionar no eixo X">X</button>
+      <button class="botao-acao" id="girar-y" aria-label="Rotacionar no eixo Y">Y</button>
+      <button class="botao-acao" id="girar-z" aria-label="Rotacionar no eixo Z">Z</button>
+    </div>
+
+    <a-scene
+      embedded
+      arjs="sourceType: webcam;
+            debugUIEnabled: false;
+            detectionMode: mono;
+            smooth: true;
+            smoothCount: 5;
+            smoothTolerance: 0.01;
+            smoothThreshold: 2;"
+      renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true; precision: medium;"
+      vr-mode-ui="enabled: false"
+      loading-screen="enabled: false">
+
+      <a-marker preset="hiro">
+        <a-entity
+          id="motor-modelo"
+          gltf-model="url(./electric_motor.glb)"
+          position="0 0.5 0"
+          rotation="0 0 0"
+          scale="0.8 0.8 0.8">
+        </a-entity>
+
+        <a-plane
+          position="0 0 0"
+          rotation="-90 0 0"
+          width="1.2"
+          height="1.2"
+          color="#111827"
+          opacity="0.45">
+        </a-plane>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+      const marker = document.querySelector('a-marker');
+      const painel = document.getElementById('painel');
+      const modelo = document.getElementById('motor-modelo');
+      const botaoZoomIn = document.getElementById('zoom-in');
+      const botaoZoomOut = document.getElementById('zoom-out');
+      const botaoRotacaoContinua = document.getElementById('rotacao-continua');
+      const botaoGirarX = document.getElementById('girar-x');
+      const botaoGirarY = document.getElementById('girar-y');
+      const botaoGirarZ = document.getElementById('girar-z');
+
+      let escalaAtual = 0.8;
+      let autoRotateAtivo = false;
+      let frameAutoRotate = null;
+      let intervaloEixo = null;
+      let eixoAtivo = null;
+
+      function getRotacaoAtual() {
+        const rotacao = modelo.getAttribute('rotation');
+        return {
+          x: Number(rotacao.x || 0),
+          y: Number(rotacao.y || 0),
+          z: Number(rotacao.z || 0)
+        };
+      }
+
+      function aplicarRotacao(x, y, z) {
+        modelo.setAttribute('rotation', `${x} ${y} ${z}`);
+      }
+
+      function aplicarZoom(novoValor) {
+        escalaAtual = Math.max(0.3, Math.min(2.0, novoValor));
+        modelo.setAttribute('scale', `${escalaAtual} ${escalaAtual} ${escalaAtual}`);
+      }
+
+      function iniciarRotacaoAuto() {
+        if (autoRotateAtivo) return;
+        autoRotateAtivo = true;
+        botaoRotacaoContinua.classList.add('ativo');
+
+        const animar = () => {
+          if (!autoRotateAtivo) return;
+          const rotacao = getRotacaoAtual();
+          aplicarRotacao(rotacao.x, rotacao.y + 2.5, rotacao.z);
+          frameAutoRotate = requestAnimationFrame(animar);
+        };
+
+        frameAutoRotate = requestAnimationFrame(animar);
+      }
+
+      function pararRotacaoAuto() {
+        autoRotateAtivo = false;
+        botaoRotacaoContinua.classList.remove('ativo');
+        if (frameAutoRotate) {
+          cancelAnimationFrame(frameAutoRotate);
+          frameAutoRotate = null;
         }
-      });
+      }
 
-      console.log('Bones mapeados:', Object.keys(bonesMap));
-    });
+      function girarUmaVez(eixo) {
+        const rotacao = getRotacaoAtual();
 
-    // -----------------------------------------------------------------
-    // Função: anima ossos suavemente para novas posições
-    // -----------------------------------------------------------------
-    function animarBones(estadoAlvo, duracaoMs) {
-      if (!modeloCarregado) return;
-      animandoBones = true;
-
-      const inicio = performance.now();
-      const posIniciais = {};
-
-      // Registra posição atual de cada osso
-      Object.keys(estadoAlvo).forEach(nomeBone => {
-        const bone = bonesMap[nomeBone];
-        if (bone) {
-          posIniciais[nomeBone] = {
-            x: bone.position.x,
-            y: bone.position.y,
-            z: bone.position.z
-          };
+        if (eixo === 'x') {
+          aplicarRotacao(rotacao.x + 5, rotacao.y, rotacao.z);
+        } else if (eixo === 'y') {
+          aplicarRotacao(rotacao.x, rotacao.y + 5, rotacao.z);
+        } else if (eixo === 'z') {
+          aplicarRotacao(rotacao.x, rotacao.y, rotacao.z + 5);
         }
-      });
+      }
 
-      function animar(agora) {
-        const t = Math.min((agora - inicio) / duracaoMs, 1);
-        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+      function iniciarRotacaoPorEixo(eixo) {
+        pararRotacaoPorEixo();
+        eixoAtivo = eixo;
+        girarUmaVez(eixo);
 
-        Object.keys(estadoAlvo).forEach(nomeBone => {
-          const bone = bonesMap[nomeBone];
-          if (!bone) return;
-          const origem = posIniciais[nomeBone];
-          const destino = estadoAlvo[nomeBone];
-          bone.position.set(
-            origem.x + (destino.x - origem.x) * ease,
-            origem.y + (destino.y - origem.y) * ease,
-            origem.z + (destino.z - origem.z) * ease
-          );
-        });
+        intervaloEixo = setInterval(() => {
+          girarUmaVez(eixo);
+        }, 40);
+      }
 
-        if (t < 1) {
-          requestAnimationFrame(animar);
+      function pararRotacaoPorEixo() {
+        if (intervaloEixo) {
+          clearInterval(intervaloEixo);
+          intervaloEixo = null;
+        }
+        eixoAtivo = null;
+      }
+
+      botaoZoomIn.addEventListener('click', () => aplicarZoom(escalaAtual + 0.1));
+      botaoZoomOut.addEventListener('click', () => aplicarZoom(escalaAtual - 0.1));
+      botaoRotacaoContinua.addEventListener('click', () => {
+        if (autoRotateAtivo) {
+          pararRotacaoAuto();
         } else {
-          animandoBones = false;
+          iniciarRotacaoAuto();
         }
+      });
+
+      ['x', 'y', 'z'].forEach((eixo) => {
+        const botao = document.getElementById(`girar-${eixo}`);
+        botao.addEventListener('pointerdown', () => iniciarRotacaoPorEixo(eixo));
+        botao.addEventListener('pointerup', pararRotacaoPorEixo);
+        botao.addEventListener('pointerleave', pararRotacaoPorEixo);
+        botao.addEventListener('pointercancel', pararRotacaoPorEixo);
+      });
+
+      marker.addEventListener('markerFound', () => {
+        painel.style.background = 'rgba(0, 140, 0, 0.75)';
+        painel.innerHTML = '✅ Marcador detectado! Modelo 3D ativo.';
+      });
+
+      marker.addEventListener('markerLost', () => {
+        painel.style.background = 'rgba(0,0,0,0.65)';
+        painel.innerHTML = '📷 Aponte a câmera para o <strong>marcador HIRO</strong><br>O modelo 3D do motor aparecerá sobre ele.';
+      });
+
+      // --- Lógica de Pinch-to-Zoom (Gestos de Pinça) ---
+      let distanciaInicialPinca = null;
+      let escalaInicialPinca = null;
+
+      function getDistancia(toque1, toque2) {
+        const dx = toque1.clientX - toque2.clientX;
+        const dy = toque1.clientY - toque2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
       }
 
-      requestAnimationFrame(animar);
-    }
+      window.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          distanciaInicialPinca = getDistancia(e.touches[0], e.touches[1]);
+          escalaInicialPinca = escalaAtual;
+        }
+      }, { passive: false });
 
-    // -----------------------------------------------------------------
-    // Botão: EXPLODIR / MONTAR
-    // -----------------------------------------------------------------
-    btnExp.addEventListener('click', function() {
-      if (!modeloCarregado) {
-        status.textContent = '⏳ Aguarde o modelo carregar...';
-        return;
-      }
-      if (animandoBones) return;
+      window.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2 && distanciaInicialPinca !== null) {
+          // Evita o comportamento padrão de zoom da página, se houver
+          // e.preventDefault() não é sempre suportado no document inteiro,
+          // mas tentaremos quando necessário.
+          
+          const novaDistancia = getDistancia(e.touches[0], e.touches[1]);
+          const proporcao = novaDistancia / distanciaInicialPinca;
+          
+          // Calcula a nova escala baseada na proporção de afastamento/aproximação dos dedos
+          const novoZoom = escalaInicialPinca * proporcao;
+          
+          aplicarZoom(novoZoom);
+        }
+      }, { passive: false });
 
-      estaExplodido = !estaExplodido;
-      const alvo = estaExplodido ? POSICOES.explodido : POSICOES.montado;
-      const dur  = estaExplodido ? 1500 : 1000;
-
-      animarBones(alvo, dur);
-
-      btnExp.textContent  = estaExplodido ? '🔩 MONTAR' : '💥 EXPLODIR';
-      btnExp.classList.toggle('explodido', estaExplodido);
-    });
-
-    // -----------------------------------------------------------------
-    // Botão: ANIMAÇÃO ORIGINAL (ArmatureAction do Sketchfab)
-    // -----------------------------------------------------------------
-    let animacaoAtiva = false;
-    btnAnim.addEventListener('click', function() {
-      if (!modeloCarregado) return;
-      animacaoAtiva = !animacaoAtiva;
-
-      motorEl.setAttribute('animation-mixer',
-        animacaoAtiva
-          ? 'clip: *; loop: repeat; timeScale: 1;'
-          : 'clip: *; loop: once; timeScale: 0;'
-      );
-
-      btnAnim.textContent = animacaoAtiva ? '⏸ PARAR' : '▶ ANIMAÇÃO';
-    });
-
-    // -----------------------------------------------------------------
-    // Feedback do marcador
-    // -----------------------------------------------------------------
-    document.getElementById('marcador').addEventListener('markerFound', () => {
-      if (!modeloCarregado) {
-        status.textContent = '⏳ Carregando motor.glb...';
-      }
-    });
-    document.getElementById('marcador').addEventListener('markerLost', () => {
-      status.textContent = '📷 Aponte para o marcador HIRO';
-      status.style.background = 'rgba(0,0,0,0.65)';
-    });
-
-    // -----------------------------------------------------------------
-    // Lógica de Zoom via Pinch (Gestos de Pinça)
-    // -----------------------------------------------------------------
-    let escalaAtual = 0.03; // Escala inicial definida no HTML
-    let distanciaInicialPinca = null;
-    let escalaInicialPinca = null;
-
-    function aplicarZoom(novoValor) {
-      // Limita a escala entre 0.01 (min) e 0.15 (max)
-      escalaAtual = Math.max(0.01, Math.min(0.15, novoValor));
-      motorEl.setAttribute('scale', `${escalaAtual} ${escalaAtual} ${escalaAtual}`);
-    }
-
-    function getDistancia(toque1, toque2) {
-      const dx = toque1.clientX - toque2.clientX;
-      const dy = toque1.clientY - toque2.clientY;
-      return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    window.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 2) {
-        distanciaInicialPinca = getDistancia(e.touches[0], e.touches[1]);
-        escalaInicialPinca = escalaAtual;
-      }
-    }, { passive: false });
-
-    window.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 2 && distanciaInicialPinca !== null) {
-        const novaDistancia = getDistancia(e.touches[0], e.touches[1]);
-        const proporcao = novaDistancia / distanciaInicialPinca;
-        const novoZoom = escalaInicialPinca * proporcao;
-        aplicarZoom(novoZoom);
-      }
-    }, { passive: false });
-
-    window.addEventListener('touchend', (e) => {
-      if (e.touches.length < 2) {
-        distanciaInicialPinca = null;
-        escalaInicialPinca = null;
-      }
-    });
-  </script>
-
-</body>
+      window.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+          distanciaInicialPinca = null;
+          escalaInicialPinca = null;
+        }
+      });
+    </script>
+  </body>
 </html>
