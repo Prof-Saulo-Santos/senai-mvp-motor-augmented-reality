@@ -68,20 +68,19 @@
     loading-screen="enabled: false">
 
     <a-marker preset="hiro" id="marcador">
+      <a-entity light="type: ambient; intensity: 1.2; color: #ffffff"></a-entity>
+      <a-entity light="type: directional; intensity: 1.0; color: #ffffff" position="0 2 2"></a-entity>
 
       <!-- Modelo real do motor carregado do .glb -->
-      <!-- scale: ajuste conforme o tamanho do seu modelo -->
-      <!-- rotation: -90 0 0 corrige o eixo Z→Y do Blender/Sketchfab -->
+      <!-- A rotação foi removida para evitar duplicar a transformação já presente no GLB exportado. -->
       <a-gltf-model
         id="motor"
         src="motor_alterado.glb"
         position="0 0 0"
-        rotation="-90 0 0"
-        scale="0.03 0.03 0.03"
+        rotation="0 0 0"
+        scale="0.12 0.12 0.12"
         animation-mixer="clip: *; loop: once; clampWhenFinished: true;">
       </a-gltf-model>
-
-
     </a-marker>
 
     <a-entity camera></a-entity>
@@ -193,7 +192,7 @@
       limparTimeoutCarregamento();
       modeloCarregado = true;
       this.setAttribute('visible', true);
-      atualizarStatus('✅ Modelo carregado. Aponte a câmera para o marcador HIRO.', 'sucesso');
+      atualizarStatus('✅ Modelo carregado. Aponte a câmera para o marcador HIRO. Se ainda não aparecer, o problema pode estar na exportação do Blender.', 'sucesso');
 
       const obj3D = this.getObject3D('mesh');
       if (!obj3D) {
@@ -305,7 +304,7 @@
       if (!modeloCarregado) {
         atualizarStatus('⏳ Carregando o modelo 3D...', 'info');
       } else {
-        atualizarStatus('✅ Marcador encontrado. O modelo está visível.', 'sucesso');
+        atualizarStatus('✅ Marcador encontrado. Se o modelo ainda não aparecer, ajuste a exportação do Blender (origem, escala e aplica transformações).', 'sucesso');
       }
     });
 
@@ -314,7 +313,7 @@
       atualizarStatus('📷 Aponte para o marcador HIRO', 'info');
     });
 
-    let escalaAtual = 0.03;
+    let escalaAtual = 0.12;
     let distanciaInicialPinca = null;
     let escalaInicialPinca = null;
 
