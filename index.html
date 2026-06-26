@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Visor Motor — RA SENAI Porto Ferreira</title>
+  <title>Visor Cubos — RA SENAI Porto Ferreira</title>
 
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -45,7 +45,7 @@
 </head>
 <body>
 
-  <div id="badge">🔧 Motor 3D Real — SENAI Porto Ferreira</div>
+  <div id="badge">🧊 Cubos AR — SENAI Porto Ferreira</div>
 <div id="status" aria-live="polite">📷 Aponte para o marcador HIRO</div>
 
   <div id="controles">
@@ -71,15 +71,14 @@
       <a-entity light="type: ambient; intensity: 1.2; color: #ffffff"></a-entity>
       <a-entity light="type: directional; intensity: 1.0; color: #ffffff" position="0 2 2"></a-entity>
 
-      <!-- Modelo real do motor carregado do .glb -->
-      <!-- A rotação foi removida para evitar duplicar a transformação já presente no GLB exportado. -->
+      <!-- Modelo de cubos animados carregado do .glb -->
       <a-gltf-model
         id="motor"
-        src="motor_animado.glb"
+        src="cubos.glb"
         position="0 0 0"
         rotation="0 0 0"
-        scale="0.12 0.12 0.12"
-        animation-mixer="clip: *; loop: once; clampWhenFinished: true;">
+        scale="0.18 0.18 0.18"
+        animation-mixer="clip: *; loop: repeat; timeScale: 1;">
       </a-gltf-model>
     </a-marker>
 
@@ -88,25 +87,6 @@
 
   <!-- ===== LÓGICA: EXPLOSÃO VIA BONES (Three.js) ===== -->
   <script>
-    // -----------------------------------------------------------------
-    // Posições dos ossos no estado MONTADO (valores originais do .gltf)
-    // BB_3=Y:-9.5 | Main_2=Y:10 | TB_1=Y:32.5 | Cap_0=Y:30.9
-    // -----------------------------------------------------------------
-    const POSICOES = {
-      montado: {
-        'Cap_0':  { x: 0, y: 30.9, z: 0 },
-        'TB_1':   { x: 0, y: 32.5, z: 0 },
-        'Main_2': { x: 0, y: 10.0, z: 0 },
-        'BB_3':   { x: 0, y: -9.5, z: 0 },
-      },
-      explodido: {
-        'Cap_0':  { x: 0,  y: 90.0, z: 0  },   // tampa sobe
-        'TB_1':   { x: 0,  y: 70.0, z: 0  },   // bloco top sobe
-        'Main_2': { x: 0,  y: 10.0, z: 0  },   // corpo fica
-        'BB_3':   { x: 0,  y:-50.0, z: 0  },   // bloco base desce
-      }
-    };
-
     const motorEl  = document.getElementById('motor');
     const btnExp   = document.getElementById('btn-explodir');
     const btnAnim  = document.getElementById('btn-animar');
@@ -115,13 +95,11 @@
     const cenaAR   = document.querySelector('a-scene');
 
     let estaExplodido = false;
-    let animandoBones = false;
-    let bonesMap = {};
     let modeloCarregado = false;
     let animacaoAtiva = false;
     let timeoutCarregamento = null;
     let indiceModelo = 0;
-    const modelosDisponiveis = ['motor_animado.glb', 'motor_alterado.glb'];
+    const modelosDisponiveis = ['cubos.glb'];
 
     function atualizarStatus(mensagem, tipo = 'info') {
       status.textContent = mensagem;
@@ -158,7 +136,6 @@
     function carregarModelo() {
       limparTimeoutCarregamento();
       modeloCarregado = false;
-      bonesMap = {};
 
       if (!window.AFRAME) {
         atualizarStatus('⚠️ A-Frame não carregou corretamente. Verifique a conexão ou o bloqueio de scripts.', 'erro');
@@ -194,21 +171,7 @@
       this.setAttribute('visible', true);
       atualizarStatus('✅ Modelo carregado. Aponte a câmera para o marcador HIRO. Se ainda não aparecer, o problema pode estar na exportação do Blender.', 'sucesso');
 
-      const obj3D = this.getObject3D('mesh');
-      if (!obj3D) {
-        atualizarStatus('⚠️ Modelo carregado, mas a malha não ficou disponível ainda.', 'erro');
-        return;
-      }
-
-      obj3D.traverse(function (child) {
-        if (child.isBone) {
-          bonesMap[child.name] = child;
-          console.log('🦴 Bone encontrado:', child.name, child.position);
-        }
-      });
-
-      console.log('Bones mapeados:', Object.keys(bonesMap));
-      this.setAttribute('animation-mixer', 'clip: *; loop: once; clampWhenFinished: true;');
+      this.setAttribute('animation-mixer', 'clip: *; loop: repeat; timeScale: 1;');
     });
 
     motorEl.addEventListener('model-error', function () {
@@ -222,64 +185,17 @@
       }
     });
 
-    function animarBones(estadoAlvo, duracaoMs) {
-      if (!modeloCarregado) return;
-      animandoBones = true;
-
-      const inicio = performance.now();
-      const posIniciais = {};
-
-      Object.keys(estadoAlvo).forEach(nomeBone => {
-        const bone = bonesMap[nomeBone];
-        if (bone) {
-          posIniciais[nomeBone] = {
-            x: bone.position.x,
-            y: bone.position.y,
-            z: bone.position.z
-          };
-        }
-      });
-
-      function animar(agora) {
-        const t = Math.min((agora - inicio) / duracaoMs, 1);
-        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-
-        Object.keys(estadoAlvo).forEach(nomeBone => {
-          const bone = bonesMap[nomeBone];
-          if (!bone) return;
-          const origem = posIniciais[nomeBone];
-          const destino = estadoAlvo[nomeBone];
-          bone.position.set(
-            origem.x + (destino.x - origem.x) * ease,
-            origem.y + (destino.y - origem.y) * ease,
-            origem.z + (destino.z - origem.z) * ease
-          );
-        });
-
-        if (t < 1) {
-          requestAnimationFrame(animar);
-        } else {
-          animandoBones = false;
-        }
-      }
-
-      requestAnimationFrame(animar);
-    }
-
     btnExp.addEventListener('click', function () {
       if (!modeloCarregado) {
         atualizarStatus('⏳ Aguarde o modelo carregar...', 'info');
         return;
       }
-      if (animandoBones) return;
 
       estaExplodido = !estaExplodido;
-      const alvo = estaExplodido ? POSICOES.explodido : POSICOES.montado;
-      const dur  = estaExplodido ? 1500 : 1000;
+      const novaEscala = estaExplodido ? 0.24 : 0.18;
+      motorEl.setAttribute('scale', `${novaEscala} ${novaEscala} ${novaEscala}`);
 
-      animarBones(alvo, dur);
-
-      btnExp.textContent  = estaExplodido ? '🔩 MONTAR' : '💥 EXPLODIR';
+      btnExp.textContent  = estaExplodido ? '🔄 VOLTAR' : '💥 EXPLODIR';
       btnExp.classList.toggle('explodido', estaExplodido);
     });
 
@@ -313,7 +229,7 @@
       atualizarStatus('📷 Aponte para o marcador HIRO', 'info');
     });
 
-    let escalaAtual = 0.12;
+    let escalaAtual = 0.18;
     let distanciaInicialPinca = null;
     let escalaInicialPinca = null;
 
