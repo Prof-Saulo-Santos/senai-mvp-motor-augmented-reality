@@ -74,7 +74,7 @@
       <!-- rotation: -90 0 0 corrige o eixo Z→Y do Blender/Sketchfab -->
       <a-gltf-model
         id="motor"
-        src="motor_animado.glb"
+        src="motor_alterado.glb"
         position="0 0 0"
         rotation="-90 0 0"
         scale="0.03 0.03 0.03"
@@ -113,6 +113,7 @@
     const btnAnim  = document.getElementById('btn-animar');
     const status   = document.getElementById('status');
     const marcador = document.getElementById('marcador');
+    const cenaAR   = document.querySelector('a-scene');
 
     let estaExplodido = false;
     let animandoBones = false;
@@ -132,6 +133,20 @@
       } else {
         status.style.background = 'rgba(0, 0, 0, 0.65)';
       }
+    }
+
+    function verificarAmbiente() {
+      if (window.location.protocol === 'file:') {
+        atualizarStatus('⚠️ Abra esta página via servidor HTTP, como http://localhost:8000, para usar câmera/AR no celular.', 'erro');
+        return false;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        atualizarStatus('⚠️ Este navegador não oferece câmera para AR.', 'erro');
+        return false;
+      }
+
+      return true;
     }
 
     function limparTimeoutCarregamento() {
@@ -177,7 +192,8 @@
     motorEl.addEventListener('model-loaded', function () {
       limparTimeoutCarregamento();
       modeloCarregado = true;
-      atualizarStatus('✅ Modelo carregado. Você pode usar os controles.', 'sucesso');
+      this.setAttribute('visible', true);
+      atualizarStatus('✅ Modelo carregado. Aponte a câmera para o marcador HIRO.', 'sucesso');
 
       const obj3D = this.getObject3D('mesh');
       if (!obj3D) {
@@ -285,12 +301,16 @@
     });
 
     marcador.addEventListener('markerFound', () => {
+      motorEl.setAttribute('visible', true);
       if (!modeloCarregado) {
         atualizarStatus('⏳ Carregando o modelo 3D...', 'info');
+      } else {
+        atualizarStatus('✅ Marcador encontrado. O modelo está visível.', 'sucesso');
       }
     });
 
     marcador.addEventListener('markerLost', () => {
+      motorEl.setAttribute('visible', false);
       atualizarStatus('📷 Aponte para o marcador HIRO', 'info');
     });
 
@@ -308,6 +328,18 @@
       const dy = toque1.clientY - toque2.clientY;
       return Math.sqrt(dx * dx + dy * dy);
     }
+
+    if (cenaAR) {
+      cenaAR.addEventListener('camera-error', () => {
+        atualizarStatus('⚠️ Não foi possível acessar a câmera. Conceda permissão e tente novamente.', 'erro');
+      });
+
+      cenaAR.addEventListener('arjs-not-loaded', () => {
+        atualizarStatus('⚠️ AR.js não iniciou corretamente. Verifique a conexão e o ambiente HTTPS/HTTP.', 'erro');
+      });
+    }
+
+    verificarAmbiente();
 
     window.addEventListener('touchstart', (e) => {
       if (e.touches.length === 2) {
