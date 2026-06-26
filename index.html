@@ -46,7 +46,7 @@
 <body>
 
   <div id="badge">🔧 Motor 3D Real — SENAI Porto Ferreira</div>
-  <div id="status">📷 Aponte para o marcador HIRO</div>
+<div id="status" aria-live="polite">📷 Aponte para o marcador HIRO</div>
 
   <div id="controles">
     <button class="btn" id="btn-explodir">💥 EXPLODIR</button>
@@ -108,29 +108,84 @@
       }
     };
 
-    // Referências
     const motorEl  = document.getElementById('motor');
     const btnExp   = document.getElementById('btn-explodir');
     const btnAnim  = document.getElementById('btn-animar');
     const status   = document.getElementById('status');
+    const marcador = document.getElementById('marcador');
 
     let estaExplodido = false;
     let animandoBones = false;
-    let bonesMap = {};        // nome → objeto Three.js Bone
+    let bonesMap = {};
     let modeloCarregado = false;
+    let animacaoAtiva = false;
+    let timeoutCarregamento = null;
+    let indiceModelo = 0;
+    const modelosDisponiveis = ['motor_animado.glb', 'motor_alterado.glb'];
 
-    // -----------------------------------------------------------------
-    // Ao carregar o modelo: mapeia os ossos pelo nome
-    // -----------------------------------------------------------------
+    function atualizarStatus(mensagem, tipo = 'info') {
+      status.textContent = mensagem;
+      if (tipo === 'erro') {
+        status.style.background = 'rgba(120, 0, 0, 0.8)';
+      } else if (tipo === 'sucesso') {
+        status.style.background = 'rgba(0, 100, 0, 0.7)';
+      } else {
+        status.style.background = 'rgba(0, 0, 0, 0.65)';
+      }
+    }
+
+    function limparTimeoutCarregamento() {
+      if (timeoutCarregamento) {
+        clearTimeout(timeoutCarregamento);
+        timeoutCarregamento = null;
+      }
+    }
+
+    function carregarModelo() {
+      limparTimeoutCarregamento();
+      modeloCarregado = false;
+      bonesMap = {};
+
+      if (!window.AFRAME) {
+        atualizarStatus('⚠️ A-Frame não carregou corretamente. Verifique a conexão ou o bloqueio de scripts.', 'erro');
+        return;
+      }
+
+      if (indiceModelo >= modelosDisponiveis.length) {
+        atualizarStatus('❌ Não foi possível carregar nenhum modelo válido. Verifique o arquivo .glb.', 'erro');
+        return;
+      }
+
+      const arquivoAtual = modelosDisponiveis[indiceModelo];
+      atualizarStatus(`⏳ Carregando ${arquivoAtual}...`, 'info');
+      motorEl.setAttribute('src', arquivoAtual);
+      motorEl.removeAttribute('animation-mixer');
+
+      timeoutCarregamento = setTimeout(() => {
+        if (!modeloCarregado) {
+          indiceModelo += 1;
+          if (indiceModelo < modelosDisponiveis.length) {
+            atualizarStatus(`⚠️ Falha ao carregar ${arquivoAtual}. Tentando alternativa...`, 'erro');
+            carregarModelo();
+          } else {
+            atualizarStatus('❌ Não foi possível carregar o modelo. Verifique o arquivo .glb e a conexão.', 'erro');
+          }
+        }
+      }, 15000);
+    }
+
     motorEl.addEventListener('model-loaded', function () {
+      limparTimeoutCarregamento();
       modeloCarregado = true;
-      //status.textContent = '✅ Motor carregado! Use os botões abaixo.';
-      status.style.background = 'rgba(0,100,0,0.7)';
+      atualizarStatus('✅ Modelo carregado. Você pode usar os controles.', 'sucesso');
 
       const obj3D = this.getObject3D('mesh');
+      if (!obj3D) {
+        atualizarStatus('⚠️ Modelo carregado, mas a malha não ficou disponível ainda.', 'erro');
+        return;
+      }
 
-      obj3D.traverse(function(child) {
-        // Captura todos os ossos (Bone) pelo nome
+      obj3D.traverse(function (child) {
         if (child.isBone) {
           bonesMap[child.name] = child;
           console.log('🦴 Bone encontrado:', child.name, child.position);
@@ -138,11 +193,20 @@
       });
 
       console.log('Bones mapeados:', Object.keys(bonesMap));
+      this.setAttribute('animation-mixer', 'clip: *; loop: once; clampWhenFinished: true;');
     });
 
-    // -----------------------------------------------------------------
-    // Função: anima ossos suavemente para novas posições
-    // -----------------------------------------------------------------
+    motorEl.addEventListener('model-error', function () {
+      limparTimeoutCarregamento();
+      indiceModelo += 1;
+      if (indiceModelo < modelosDisponiveis.length) {
+        atualizarStatus('⚠️ Modelo falhou ao carregar. Tentando outro arquivo...', 'erro');
+        carregarModelo();
+      } else {
+        atualizarStatus('❌ Não foi possível carregar o modelo. Verifique o arquivo .glb e a conexão.', 'erro');
+      }
+    });
+
     function animarBones(estadoAlvo, duracaoMs) {
       if (!modeloCarregado) return;
       animandoBones = true;
@@ -150,7 +214,6 @@
       const inicio = performance.now();
       const posIniciais = {};
 
-      // Registra posição atual de cada osso
       Object.keys(estadoAlvo).forEach(nomeBone => {
         const bone = bonesMap[nomeBone];
         if (bone) {
@@ -164,7 +227,7 @@
 
       function animar(agora) {
         const t = Math.min((agora - inicio) / duracaoMs, 1);
-        const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // easeInOut
+        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
         Object.keys(estadoAlvo).forEach(nomeBone => {
           const bone = bonesMap[nomeBone];
@@ -188,12 +251,9 @@
       requestAnimationFrame(animar);
     }
 
-    // -----------------------------------------------------------------
-    // Botão: EXPLODIR / MONTAR
-    // -----------------------------------------------------------------
-    btnExp.addEventListener('click', function() {
+    btnExp.addEventListener('click', function () {
       if (!modeloCarregado) {
-        status.textContent = '⏳ Aguarde o modelo carregar...';
+        atualizarStatus('⏳ Aguarde o modelo carregar...', 'info');
         return;
       }
       if (animandoBones) return;
@@ -208,14 +268,13 @@
       btnExp.classList.toggle('explodido', estaExplodido);
     });
 
-    // -----------------------------------------------------------------
-    // Botão: ANIMAÇÃO ORIGINAL (ArmatureAction do Sketchfab)
-    // -----------------------------------------------------------------
-    let animacaoAtiva = false;
-    btnAnim.addEventListener('click', function() {
-      if (!modeloCarregado) return;
-      animacaoAtiva = !animacaoAtiva;
+    btnAnim.addEventListener('click', function () {
+      if (!modeloCarregado) {
+        atualizarStatus('⏳ Aguarde o modelo carregar para usar a animação.', 'info');
+        return;
+      }
 
+      animacaoAtiva = !animacaoAtiva;
       motorEl.setAttribute('animation-mixer',
         animacaoAtiva
           ? 'clip: *; loop: repeat; timeScale: 1;'
@@ -225,28 +284,21 @@
       btnAnim.textContent = animacaoAtiva ? '⏸ PARAR' : '▶ ANIMAÇÃO';
     });
 
-    // -----------------------------------------------------------------
-    // Feedback do marcador
-    // -----------------------------------------------------------------
-    document.getElementById('marcador').addEventListener('markerFound', () => {
+    marcador.addEventListener('markerFound', () => {
       if (!modeloCarregado) {
-        status.textContent = '⏳ Carregando motor.glb...';
+        atualizarStatus('⏳ Carregando o modelo 3D...', 'info');
       }
     });
-    document.getElementById('marcador').addEventListener('markerLost', () => {
-      status.textContent = '📷 Aponte para o marcador HIRO';
-      status.style.background = 'rgba(0,0,0,0.65)';
+
+    marcador.addEventListener('markerLost', () => {
+      atualizarStatus('📷 Aponte para o marcador HIRO', 'info');
     });
 
-    // -----------------------------------------------------------------
-    // Lógica de Zoom via Pinch (Gestos de Pinça)
-    // -----------------------------------------------------------------
-    let escalaAtual = 0.03; // Escala inicial definida no HTML
+    let escalaAtual = 0.03;
     let distanciaInicialPinca = null;
     let escalaInicialPinca = null;
 
     function aplicarZoom(novoValor) {
-      // Limita a escala entre 0.01 (min) e 0.15 (max)
       escalaAtual = Math.max(0.01, Math.min(0.15, novoValor));
       motorEl.setAttribute('scale', `${escalaAtual} ${escalaAtual} ${escalaAtual}`);
     }
@@ -279,6 +331,8 @@
         escalaInicialPinca = null;
       }
     });
+
+    carregarModelo();
   </script>
 
 </body>
